@@ -117,10 +117,13 @@ def _run_scan(scan_id: str, params: dict):
                 runners.append(LocalRunner(host or "localhost"))
             for h in [x.strip() for x in params.get("hosts", "").split(",") if x.strip()]:
                 try:
+                    key = params.get("key") or None
+                    if key:
+                        key = os.path.expanduser(key)
                     runners.append(SSHRunner(
                         host=h,
                         user=params.get("user", "root"),
-                        key_path=params.get("key") or None,
+                        key_path=key,
                         password=params.get("password") or None,
                         port=int(params.get("port", 22)),
                     ))

@@ -26,9 +26,14 @@ def _cpu_td(cpu_id: int, cpu_to_vms: dict, isolated: set, n: int) -> str:
     elif len(vms_here) == 1:
         vm  = vms_here[0]
         lbl = vm.name[:3]
-        tip = vm.name
-        cls = ("cpu-nort" if "nort" in vm.cgroup_partition
-               else "cpu-rt" if "rt" in vm.cgroup_partition
+        iso = cpu_id in isolated
+        tip = vm.name + (" + isolated" if iso else "")
+        # Diagonal-stripe classes = pinned AND isolated simultaneously
+        cls = ("cpu-nort-iso" if "nort" in vm.cgroup_partition and iso
+               else "cpu-nort"    if "nort" in vm.cgroup_partition
+               else "cpu-rt-iso"  if "rt"   in vm.cgroup_partition and iso
+               else "cpu-rt"      if "rt"   in vm.cgroup_partition
+               else "cpu-vm-iso"  if iso
                else "cpu-vm")
     elif cpu_id in isolated:
         cls, lbl, tip = "cpu-iso", "~~", f"CPU {cpu_id} isolated free"
@@ -76,6 +81,8 @@ def _cpu_map_html(host: HostInfo, vms_on_host: list) -> str:
   <div class="legend">
     <span class="cpu-cell cpu-rt">RT</span>&nbsp;/machine/rt&nbsp;&nbsp;
     <span class="cpu-cell cpu-nort">noRT</span>&nbsp;/machine/nort&nbsp;&nbsp;
+    <span class="cpu-cell cpu-rt-iso">RT</span>&nbsp;RT+isolated&nbsp;&nbsp;
+    <span class="cpu-cell cpu-nort-iso">nRT</span>&nbsp;noRT+isolated&nbsp;&nbsp;
     <span class="cpu-cell cpu-vm">VM</span>&nbsp;other&nbsp;&nbsp;
     <span class="cpu-cell cpu-iso">~~</span>&nbsp;isolated free&nbsp;&nbsp;
     <span class="cpu-cell cpu-sys">sys</span>&nbsp;system&nbsp;&nbsp;
@@ -127,6 +134,10 @@ pre{background:#1e1e2e;color:#cdd6f4;padding:12px;font-size:11px;overflow-x:auto
 .cpu-sys{background:#e0e0e0;color:#555}
 .cpu-conflict{background:#c00;color:#fff}
 .cpu-empty{background:transparent;border:none}
+/* Diagonal stripes = CPU is both pinned by a VM AND in the isolated set */
+.cpu-rt-iso{background:repeating-linear-gradient(45deg,#7b2d8b,#7b2d8b 5px,#c8a000 5px,#c8a000 10px);color:#fff}
+.cpu-nort-iso{background:repeating-linear-gradient(45deg,#2d6a2d,#2d6a2d 5px,#c8a000 5px,#c8a000 10px);color:#fff}
+.cpu-vm-iso{background:repeating-linear-gradient(45deg,#1a5a8a,#1a5a8a 5px,#c8a000 5px,#c8a000 10px);color:#fff}
 """
 
 

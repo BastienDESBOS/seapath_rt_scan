@@ -51,12 +51,14 @@ def _cpu_style_label(cpu_id: int, cpu_to_vms: dict,
     elif len(vms_here) == 1:
         vm  = vms_here[0]
         lbl = vm.name[:2].upper()
+        # italic = this CPU is ALSO isolated (pinned + isolated simultaneously)
+        style = "bold italic" if cpu_id in isolated else "bold"
         if "nort" in vm.cgroup_partition:
-            return "bold white on dark_green", lbl, vm.name
+            return f"{style} white on dark_green", lbl, vm.name
         elif "rt" in vm.cgroup_partition:
-            return "bold white on dark_violet", lbl, vm.name
+            return f"{style} white on dark_violet", lbl, vm.name
         else:
-            return "bold white on dark_cyan", lbl, vm.name
+            return f"{style} white on dark_cyan", lbl, vm.name
     elif cpu_id in isolated:
         return "bold black on yellow3", "~~", f"CPU{cpu_id} isolated free"
     else:
@@ -123,7 +125,8 @@ def render_cpu_map_rich(host: HostInfo, vms_on_host: list, console) -> None:
         "[bold white on dark_cyan] VM [/bold white on dark_cyan] other  "
         "[bold black on yellow3] ~~ [/bold black on yellow3] isolated free  "
         "[dim white on grey30]    [/dim white on grey30] system  "
-        "[bold white on red] !! [/bold white on red] conflict"
+        "[bold white on red] !! [/bold white on red] conflict  "
+        "[dim]italic = also isolated[/dim]"
     )
 
     if not vms_on_host:
@@ -164,16 +167,17 @@ def _generate_alerts(report: ClusterReport, vms: list) -> list:
     """
     alerts = []
 
-    # Two VMs pinned to the same physical CPU
+    # Two VMs pinned to the same physical CPU on the same host.
+    # Key = (host, cpu_id) so VMs on different hosts never conflict.
     cpu_vm_map: dict = {}
     for vm in vms:
         for pin in vm.vcpu_pins:
             for cpu_id in pin.physical_cpus:
-                cpu_vm_map.setdefault(cpu_id, []).append(vm.name)
-    for cpu_id, names in cpu_vm_map.items():
+                cpu_vm_map.setdefault((vm.host, cpu_id), []).append(vm.name)
+    for (host, cpu_id), names in cpu_vm_map.items():
         if len(set(names)) > 1:
             alerts.append(
-                f"[red]CONFLICT[/red] CPU {cpu_id} shared by: "
+                f"[red]CONFLICT[/red] {host} CPU {cpu_id} shared by: "
                 f"{', '.join(set(names))}")
 
     for vm in vms:

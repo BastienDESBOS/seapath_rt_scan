@@ -1,0 +1,17 @@
+services:
+  seapath-scan:
+    build: .
+    image: seapath-rt-scan
+    ports:
+      - "5000:5000"
+    volumes:
+      # Reports are persisted on the host between container restarts
+      - ./seapath_reports:/data/reports
+      # SSH keys are mounted read-only so the tool can reach cluster nodes
+      # In the scan form, use key path: /data/ssh/id_rsa (or your key name)
+      - ~/.ssh:/data/ssh:ro
+    environment:
+      - PORT=5000
+      # Uncomment to enable Flask debug mode:
+      # - DEBUG=1
+    restart: unless-stopped
